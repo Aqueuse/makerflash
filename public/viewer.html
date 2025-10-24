@@ -26,37 +26,11 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { STLLoader } from 'three/addons/loaders/STLLoader.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 // Vérifie s’il y a un paramètre uuid dans l’URL
 const params = new URLSearchParams(window.location.search);
 const uuid = params.get('uuid');
-
-if (uuid) {
-  console.log("Chargement du modèle via UUID:", uuid);
-  const stlUrl = `/file/${uuid}`;
-  
-  // Essaye de charger le modèle STL par défaut
-  fetch(stlUrl).then(res => {
-    if (!res.ok) throw new Error("Fichier non trouvé sur le serveur.");
-    return res.arrayBuffer();
-  }).then(data => {
-    const loader = new STLLoader();
-    const geometry = loader.parse(data);
-    geometry.center();
-    mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x6750A4 }));
-    scene.add(mesh);
-
-    const box = new THREE.Box3().setFromObject(mesh);
-    const center = box.getCenter(new THREE.Vector3());
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z);
-    camera.position.copy(center).add(new THREE.Vector3(maxDim * 1.5, maxDim * 1.2, maxDim * 1.5));
-    camera.lookAt(center);
-    controls.target.copy(center);
-  }).catch(err => {
-    console.error("Erreur de chargement:", err);
-  });
-}
 
 const container = document.getElementById('viewer');
 const scene = new THREE.Scene();
@@ -85,13 +59,64 @@ let mesh;
 
 camera.position.set(0,0,5);
 
+if (uuid) {
+  console.log("Chargement du modèle via UUID:", uuid);
+  const modelUrl = `/file/${uuid}`;
+
+  fetch(modelUrl)
+    .then(res => {
+      if (!res.ok) throw new Error("Fichier non trouvé sur le serveur.");
+      const ext = res.url.split('.').pop().toLowerCase();
+      return res.arrayBuffer().then(data => ({ data, ext }));
+    })
+    .then(data => {
+       // --- Détecte le type de fichier ---
+       const header = new TextDecoder().decode(data.slice(0, 200)).toLowerCase();
+       const isOBJ = header.includes('v ') || header.includes('f ');
+       const isAsciiSTL = header.startsWith('solid');
+
+       let meshMaterial = new THREE.MeshStandardMaterial({ color: 0x6750A4 });
+       if (isOBJ) {
+         // OBJ → texte
+         const { OBJLoader } = await import('three/addons/loaders/OBJLoader.js');
+        const text = new TextDecoder().decode(data);
+        const loader = new OBJLoader();
+        mesh = loader.parse(text);
+     } 
+     else {
+        // STL (ASCII ou binaire)
+        const loader = new STLLoader();
+        const geometry = loader.parse(data);
+        geometry.center();
+        mesh = new THREE.Mesh(geometry, meshMaterial);
+     }
+
+      scene.add(mesh);
+
+      // === Calcul et affichage de la bounding box ===
+      const box = new THREE.Box3().setFromObject(mesh);
+      const helper = new THREE.Box3Helper(box, 0xff0000);
+      scene.add(helper);
+
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z);
+
+      mesh.position.sub(center);
+      helper.position.sub(center);
+
+      camera.position.copy(center).add(new THREE.Vector3(maxDim * 1.5, maxDim * 1.2, maxDim * 1.5));
+      camera.lookAt(center);
+      controls.target.copy(center);
+    })
+    .catch(err => console.error("Erreur de chargement:", err));
+}
+
 function animate(){
   requestAnimationFrame(animate);
-  if(mesh) mesh.rotation.y += 0.003;
   controls.update();
   renderer.render(scene,camera);
 }
-
 animate();
 </script>
 </body>
