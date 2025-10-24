@@ -15,7 +15,7 @@
 </script>
 <style>
   html,body{margin:0;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#F2F0F5;font-family:sans-serif}
-  #viewer{width:100%;max-width:700px;height:400px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.15);background:#fff}
+  #viewer{width:300px;max-width:700px;height:400px;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,0.15);background:#fff}
   #fileInput{margin:1rem 0;padding:.6rem 1rem;border-radius:8px;border:1px solid #ccc;background:#fff;cursor:pointer}
 </style>
 </head>
@@ -82,35 +82,16 @@ window.addEventListener('resize', ()=>{
 });
 
 let mesh;
-document.getElementById('fileInput').addEventListener('change', e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    const loader = new STLLoader();
-    const geometry = loader.parse(ev.target.result);
-    geometry.center();
-    if(mesh) scene.remove(mesh);
-    mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({color:0x6750A4,metalness:0.1,roughness:0.6}));
-    scene.add(mesh);
-    const box = new THREE.Box3().setFromObject(mesh);
-    const size = box.getSize(new THREE.Vector3());
-    const center = box.getCenter(new THREE.Vector3());
-    const maxDim = Math.max(size.x,size.y,size.z);
-    camera.position.copy(center).add(new THREE.Vector3(maxDim*1.5,maxDim*1.2,maxDim*1.5));
-    camera.lookAt(center);
-    controls.target.copy(center);
-  };
-  reader.readAsArrayBuffer(file);
-});
 
 camera.position.set(0,0,5);
+
 function animate(){
   requestAnimationFrame(animate);
   if(mesh) mesh.rotation.y += 0.003;
   controls.update();
   renderer.render(scene,camera);
 }
+
 animate();
 </script>
 </body>

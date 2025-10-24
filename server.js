@@ -8,6 +8,7 @@ import morgan from "morgan";
 import { nanoid } from "nanoid";
 import fs from "fs";
 import path from "path";
+import crypto from "crypto";
 
 const app = express();
 const PORT = 3000;
@@ -57,15 +58,41 @@ app.post("/check", upload.single("file"), async (req, res) => {
       return res.status(400).json({ ok: false, error: "File too large" });
 
     const ext = path.extname(file.originalname).toLowerCase();
+
+    // ✅ Calculer l'empreinte unique du contenu
+    const hash = crypto.createHash("sha256").update(file.buffer).digest("hex");
+
+    // ✅ Chercher si un fichier existe déjà avec ce hash
+    const existingFiles = fs.readdirSync(UPLOAD_DIR).filter(f => f.endsWith(".stl") || f.endsWith(".obj"));
+    for (const file of existingFiles) {
+      const existingPath = path.join(UPLOAD_DIR, file);
+      const existingBuffer = fs.readFileSync(existingPath);
+      const existingHash = crypto.createHash("sha256").update(existingBuffer).digest("hex");
+
+      if (existingHash === hash) {
+        // ✅ Fichier identique trouvé
+        const uuid = path.parse(file).name; // le nom du fichier (UUID)
+        console.log("Fichier déjà existant");
+
+        return res.json({
+          ok: true,
+          uuid,
+          reused: true,
+          message: "Fichier déjà présent sur le serveur"
+        });
+      }
+    }
+
+    // --- Validation STL / OBJ (inchangé) ---
     let valid = false;
     if (ext === ".stl") valid = isSTL(file.buffer);
     else if (ext === ".obj") valid = isOBJ(file.buffer);
     if (!valid)
       return res.status(400).json({ ok: false, error: "Invalid STL/OBJ" });
 
+    // ✅ Nouveau fichier si inconnu
     const uuid = nanoid(8);
     const filepath = path.join(UPLOAD_DIR, `${uuid}${ext}`);
-
     fs.writeFileSync(filepath, file.buffer);
 
     const meta = {
@@ -74,16 +101,17 @@ app.post("/check", upload.single("file"), async (req, res) => {
       originalName: file.originalname,
       type: ext.slice(1),
       size: file.size,
+      hash, // <-- on garde le hash
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
     saveMeta(uuid, meta);
 
-    console.log(`✅ File checked & saved: ${meta.filename}`);
-    res.json({ ok: true, uuid, message: "Fichier valide et sauvegardé" });
+    console.log(`✅ Nouveau fichier enregistré: ${meta.filename}`);
+    res.json({ ok: true, uuid, reused: false, message: "Fichier sauvegardé" });
   } catch (err) {
     console.error("Check error:", err);
-    res.status(500).json({ ok: false, error: "Server error" });
+    res.status(500).json({ ok: false, error: err });
   }
 });
 
