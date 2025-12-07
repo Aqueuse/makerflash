@@ -1,0 +1,62 @@
+body {
+    margin: 0;
+    font-family: "Inter", "Segoe UI", sans-serif;
+    background: #fafafa;
+    color: #222;
+    line-height: 1.6;
+    text-align: center;
+}
+
+header {
+    padding: 40px 20px 10px;
+}
+
+h1 {
+    font-size: 2.4rem;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    margin-top: 8px;
+    font-size: 1.1rem;
+    color: #555;
+}
+
+.intro {
+    padding: 20px;
+    font-size: 1.2rem;
+}
+
+.image-block img {
+    width: 100%;
+    max-width: 800px;
+    margin: 30px auto;
+    display: block;
+    border-radius: 4px;
+}
+
+.cta {
+    margin: 30px 0;
+}
+
+.button {
+    padding: 12px 24px;
+    font-size: 1rem;
+    background: black;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    display: inline-block;
+    transition: background 0.2s;
+}
+
+.button:hover {
+    background: #444;
+}
+
+footer {
+    padding: 30px;
+    font-size: 0.9rem;
+    color: #666;
+}
